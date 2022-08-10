@@ -1,14 +1,14 @@
 const plan = ["###################################",
-              "#                                 #",
+              "#                 ~        ~      #",
               "#      ####                       #",
               "# #### o      ####         o      #",
               "#      ####                       #",
               "#####o                            #",
-              "#              o                  #",
+              "#~             o       ~         ~#",
               "#                                 #",
               "#                          o      #",
               "#         o                       #",
-              "#                                 #",
+              "# ~                         ~     #",
               "###################################",]
 
 const directions = {
@@ -22,6 +22,30 @@ const directions = {
     "nw": new Vector(-1, -1)
 }
 
+const directionNames = Object.keys(directions)
+
+// functions -------------------------------------------------------------------
+const randomElement = (arr) => {
+    const direction = arr[Math.floor(Math.random() * arr.length)]
+    return direction
+}
+
+const elementFromChar = (legend, char) => {
+    if(char === " ") return null;
+
+    const element = new legend[char]();
+    element.originChar = char;
+    return element;
+}
+
+const charFromElement = (element) => element === null? " " : element.originChar
+
+const dirPlus = (direction, n) => {
+    const index = directionNames.indexOf(direction)
+    return directionNames[(index + n + directionNames.length) % directionNames.length]
+}
+
+// ------------------------------------------------------------------------------
 
 function Vector(x, y){
     this.x = x;
@@ -31,9 +55,6 @@ function Vector(x, y){
 Vector.prototype.plus = function(other) {
     return new Vector(this.x + other.x, this.y + other.y)
 } 
-
-
-
 
 //Grid--------------------------------------------------------------------------
 
@@ -59,39 +80,59 @@ Grid.prototype.forEach = function(f, context) {
     for(let y = 0; y < this.height; y++){
         for(let x = 0; x < this.width; x++){
             const value = this.space[x + y * this.width];
-            if(value != null) f.call(context, value, new Vector(x, y))
+            if(value !== null) f.call(context, value, new Vector(x, y))
         }
     }
 }
 
 //------------------------------------------------------------------------------
 
-//Creature Logic
-const randomElement = (arr) => {
-    const direction = arr[Math.floor(Math.random() * arr.length)]
-    return direction
-}
+//Creatures Logic---------------------------------------------------------------
+
+//BouncingCritter-----------------------------------------------------
+
 
 function BouncingCritter (){
     this.direction = randomElement(Object.keys(directions))
 }
 
 BouncingCritter.prototype.act = function (view) {
-    if(view.look(this.direction) != " ") this.direction = view.find(" ") || "s";
+    if(view.look(this.direction) !== " ") this.direction = view.find(" ") || "s";
     return {type: "move", direction: this.direction}
 }
 
-//------------------------------------------------------------------------------
+//end. BouncingCritter-------------------------------------------------
 
-const elementFromChar = (legend, char) => {
-    if(char === " ") return null;
+//WallFollower---------------------------------------------------------
 
-    const element = new legend[char]();
-    element.originChar = char;
-    return element;
+
+function WallFollower (){
+    this.direction = "s"
 }
 
-const charFromElement = (element) => element === null? " " : element.originChar
+WallFollower.prototype.act = function (view) {
+    let start = this.direction;
+
+    if(view.look(dirPlus(this.direction, -3)) !== " "){
+        start = this.direction = dirPlus(this.direction, -2)
+    }
+
+    while(view.look(this.direction) !== " "){
+        this.direction = dirPlus(this.direction, 1)
+        if(this.direction === start) break
+    }
+
+    return {type: "move", direction: this.direction}
+}
+
+//end. WallFollower-----------------------------------------------------
+
+
+
+
+//end. Creatures Logic------------------------------------------------------------
+
+
 
 function World(map, legend){
     const grid = new Grid(map[0].length, map.length);
@@ -177,7 +218,7 @@ function Wall(){}
 
 
 
-const world = new World(plan, {"#": Wall, "o": BouncingCritter});
+const world = new World(plan, {"#": Wall, "o": BouncingCritter, "~": WallFollower});
 
 
 const direction = setInterval(() => {
@@ -190,3 +231,4 @@ const direction = setInterval(() => {
 setTimeout(() => {
     clearInterval(direction)
 }, 20000)
+
