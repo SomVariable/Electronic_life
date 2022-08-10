@@ -1,14 +1,14 @@
 const plan = ["###################################",
-              "#                 ~        ~      #",
-              "#      ####                       #",
-              "# #### o      ####         o      #",
-              "#      ####                       #",
+              "# ****************                #",
+              "#      ####                *****  #",
+              "# #### o      ####                #",
+              "#      ####        **********     #",
               "#####o                            #",
-              "#~             o       ~         ~#",
+              "#     ***    ***************      #",
               "#                                 #",
-              "#                          o      #",
+              "#  *********************   o      #",
               "#         o                       #",
-              "# ~                         ~     #",
+              "#      ********************       #",
               "###################################",]
 
 const directions = {
@@ -24,6 +24,74 @@ const directions = {
 
 const directionNames = Object.keys(directions)
 
+const actionTypes = {};
+
+//ActionCreaters----------------------------------------------------------
+
+const growAC = () => {
+    return {type: "grow"}
+}
+const reproduceAC = (payload) => {
+    return {type: "reproduce", direction: payload} 
+}
+
+const moveAC = (payload) => {
+    return {type: "move", direction: payload} 
+}
+
+const eatAC = (payload) => {
+    return {type: "eat", direction: payload} 
+}
+//end.ActionCreaters------------------------------------------------------
+
+//Interfaces---------------------------------------------------------------
+
+
+actionTypes.grow = (critter) => {
+    critter.changeEnergy(0.5);
+    return true
+}
+
+actionTypes.move = function(critter, vector, action) {
+    const dest = this.checkDestination(action, vector);
+    const isIncorrectDest   =  dest === null,
+          isIncorrectEnergy =  critter.energy <= 1;
+    
+    if(isIncorrectDest || isIncorrectEnergy || this.grid.get(dest) !== null) return false
+
+    critter.changeEnergy(-1)
+    this.grid.set(vector, null);
+    this.grid.set(dest, critter)
+    return true
+}
+
+actionTypes.eat = function(critter, vector, action) {
+    const dest = this.checkDestination(action, vector);
+    const atDest = dest !== null && this.grid.get(dest);
+
+    if(!atDest || atDest.energy === null) return false;
+
+    critter.changeEnergy(atDest.energy);
+    this.grid.set(dest, null)
+    return true
+}
+
+actionTypes.reproduce = function(critter, vector, action)  {
+    const baby = elementFromChar(this.legend, critter.originChar)
+    const dest = this.checkDestination(action, vector);
+    const isIncorrectDest   =  dest === null,
+          isIncorrectEnergy =  critter.energy <= 2 * baby.energy;
+
+    if(isIncorrectDest || isIncorrectEnergy || this.grid.get(dest) !== null) return false
+    critter.changeEnergy(-2 * baby.energy);
+    this.grid.set(dest, baby)
+    return true
+}
+
+
+//end.Interfaces-----------------------------------------------------------
+
+
 // functions -------------------------------------------------------------------
 const randomElement = (arr) => {
     const direction = arr[Math.floor(Math.random() * arr.length)]
@@ -32,7 +100,6 @@ const randomElement = (arr) => {
 
 const elementFromChar = (legend, char) => {
     if(char === " ") return null;
-
     const element = new legend[char]();
     element.originChar = char;
     return element;
@@ -89,41 +156,97 @@ Grid.prototype.forEach = function(f, context) {
 
 //Creatures Logic---------------------------------------------------------------
 
+const creatureViews = { 
+    plant: "*",
+    plantEater: "o"
+}
+
+
+function Creature(){
+    this.energy = null
+}
+
+
+
+Creature.prototype.changeEnergy = function (val) {
+    this.energy += val;
+}
+
+//Plant--------------------------------------------------------------
+function Plant(){
+    this.energy = 3 + Math.random() * 4;
+}
+
+Plant.prototype = Object.create(Creature.prototype)
+
+Plant.prototype.act = function(context){
+    if(this.energy > 15){
+        const space = context.find(" ");
+        if(space) return reproduceAC(space)
+    }
+
+    if(this.energy < 20){
+        return growAC()
+    }
+}
+//end. Plant---------------------------------------------------------
+
+//PlantEater--------------------------------------------------------------
+function PlantEater(){
+    this.energy = 20;
+}
+
+PlantEater.prototype = Object.create(Creature.prototype)
+
+PlantEater.prototype.act = function(context){
+    const space = context.find(" ");
+    if(this.energy > 60 && space) return reproduceAC(space)
+    
+    const plant= context.find(creatureViews.plant)
+
+    if(plant) return eatAC(plant)
+
+    if(space) return moveAC(space)
+}
+//end. PlantEater---------------------------------------------------------
+
 //BouncingCritter-----------------------------------------------------
 
 
-function BouncingCritter (){
-    this.direction = randomElement(Object.keys(directions))
-}
+// function BouncingCritter (){
+//     this.direction = randomElement(Object.keys(directions))
+// }
 
-BouncingCritter.prototype.act = function (view) {
-    if(view.look(this.direction) !== " ") this.direction = view.find(" ") || "s";
-    return {type: "move", direction: this.direction}
-}
+
+// BouncingCritter.prototype.act = function (view) {
+//     if(view.look(this.direction) !== " ") this.direction = view.find(" ") || "s";
+//     return {type: "move", direction: this.direction}
+// }
 
 //end. BouncingCritter-------------------------------------------------
 
 //WallFollower---------------------------------------------------------
 
 
-function WallFollower (){
-    this.direction = "s"
-}
 
-WallFollower.prototype.act = function (view) {
-    let start = this.direction;
+// function WallFollower (){
+//     this.direction = "s"
+// }
 
-    if(view.look(dirPlus(this.direction, -3)) !== " "){
-        start = this.direction = dirPlus(this.direction, -2)
-    }
+// WallFollower.prototype.act = function (view) {
+//     let start = this.direction;
 
-    while(view.look(this.direction) !== " "){
-        this.direction = dirPlus(this.direction, 1)
-        if(this.direction === start) break
-    }
+//     if(view.look(dirPlus(this.direction, -3)) !== " "){
+//         start = this.direction = dirPlus(this.direction, -2)
+//     }
 
-    return {type: "move", direction: this.direction}
-}
+//     while(view.look(this.direction) !== " "){
+//         this.direction = dirPlus(this.direction, 1)
+//         if(this.direction === start) break
+//     }
+
+//     return {type: "move", direction: this.direction}
+// }
 
 //end. WallFollower-----------------------------------------------------
 
@@ -171,14 +294,11 @@ World.prototype.turn = function(){
 
 World.prototype.letAct = function(critter, vector){
     const action = critter.act(new View(this, vector));
+    const isCorrectAction = action && action.type in actionTypes
+    const handled = isCorrectAction && actionTypes[action.type].call(this, critter, vector, action);
 
-    if(action && action.type === "move") {
-        const dest= this.checkDestination(action, vector);
-
-        if(dest && this.grid.get(dest) === null){
-            this.grid.set(vector, null);
-            this.grid.set(dest, critter);
-        }
+    if(!handled){
+        critter.changeEnergy(-0.2);
     }
 }
 
@@ -218,7 +338,7 @@ function Wall(){}
 
 
 
-const world = new World(plan, {"#": Wall, "o": BouncingCritter, "~": WallFollower});
+const world = new World(plan, {"#": Wall, "*": Plant, "o": PlantEater});
 
 
 const direction = setInterval(() => {
