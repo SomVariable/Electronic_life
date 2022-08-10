@@ -12,13 +12,13 @@ const plan = ["###################################",
               "###################################",]
 
 const directions = {
-    "n" : new Vector(0, -1),
-    "ne": new Vector(1, -1),
-    "e" : new Vector(1, 0),
-    "se": new Vector(1, 1),
-    "s" : new Vector(0, 1),
-    "sw": new Vector(-1, 1),
-    "w" : new Vector(-1, 0),
+    "n" : new Vector( 0, -1),
+    "ne": new Vector( 1, -1),
+    "e" : new Vector( 1,  0),
+    "se": new Vector( 1,  1),
+    "s" : new Vector( 0,  1),
+    "sw": new Vector(-1,  1),
+    "w" : new Vector(-1,  0),
     "nw": new Vector(-1, -1)
 }
 
@@ -28,7 +28,9 @@ function Vector(x, y){
     this.y = y;
 }
 
-Vector.prototype.plus = (other) => new Vector(this.x + other.x, this.y + other.y)
+Vector.prototype.plus = function(other) {
+    return new Vector(this.x + other.x, this.y + other.y)
+} 
 
 
 
@@ -65,7 +67,10 @@ Grid.prototype.forEach = function(f, context) {
 //------------------------------------------------------------------------------
 
 //Creature Logic
-const randomElement = (arr) => arr[Math.floor(Math.random() * arr.length)]
+const randomElement = (arr) => {
+    const direction = arr[Math.floor(Math.random() * arr.length)]
+    return direction
+}
 
 function BouncingCritter (){
     this.direction = randomElement(Object.keys(directions))
@@ -137,7 +142,7 @@ World.prototype.letAct = function(critter, vector){
 }
 
 World.prototype.checkDestination = function(action, vector) {
-    if(directions.hasOwnProperty(action.derection)){
+    if(directions.hasOwnProperty(action.direction)){
         const dest = vector.plus(directions[action.direction]);
         if(this.grid.isInside(dest)) return dest
     }
@@ -155,11 +160,12 @@ View.prototype.look = function(dir){
 
 View.prototype.findAll = function(ch){
     const found = [];
-
+    
     for(let dir in directions){
         if(this.look(dir) === ch) found.push(dir)
-        return found
     }
+
+    return found
 }
 
 View.prototype.find = function(ch){
@@ -174,7 +180,13 @@ function Wall(){}
 const world = new World(plan, {"#": Wall, "o": BouncingCritter});
 
 
-for(let i = 0; i < 5; i++){
+const direction = setInterval(() => {
+    console.clear()
     world.turn();
     console.log(world.toString())
-}
+}, 100)
+
+
+setTimeout(() => {
+    clearInterval(direction)
+}, 20000)
