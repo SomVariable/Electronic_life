@@ -1,8 +1,35 @@
-const plan = ["################",
-              "#  o#   *#     #",
-              "#   #     *    #",
-              "#  **     *    #",
-              "################"]
+const plan = ["##############################################################################################################################################",
+              "# #o#                                 ######################################     ######################################                      #",
+              "# # #                                 ######################################     ######################################               o      #",
+              "# # #           *         *           ##                                  ##     ##                                  ##                      #",
+              "# # #                                 ##   ##                        ##   ##     ##   ##                        ##   ##                      #",
+              "# # #           *         *           ##   ##          *             ##   ##     ##   ##          *             ##   ##                      #",
+              "# # # #                               ##   ##                        ##   ##     ##   ##                        ##   ##**                    #",
+              "# # # #                               ##   ###########      ###########   ##     ##   ###########      ###########   ##          w           #",
+              "# # # #                               ##        *   ##      ##  *         ##     ##        *   ##      ##  *         ##                      #",
+              "# # # ################################################      ################     ################      ################                      #",
+              "# # #            *                   #                                                                                                       #",
+              "# # ################################ #        w                            w                                                    *            #",
+              "# #               *                  #                                                                  w               o                    #",
+              "# ####################################              ######################################                                          o        #",
+              "#                                                   ###################################### o                           o                     #",
+              "#                                                   ##                                  ##                                                   #",
+              "#                         o                         ##   ##                        ##   ##           *                o                      #",
+              "#                                                  *##   ##          *             ##   ##                                                   #",
+              "#                                                   ##   ##                        ##   ##                                        o          #",
+              "#                                                   ##   ###########      ###########   ##                                                   #",
+              "#                                    o              ##        *   ##      ##  *         ##   *                                               #",
+              "#                      *                            ################      ################                            **                     #",
+              "#                                                                                                                                            #",
+              "#                                                                                            #################################################",
+              "#                    *****                         ww                                        #                  *******               *******#",
+              "#                                  o                                                         #                  *******                      #",
+              "#            *                                                            w                  #                                               #",
+              "#                                                                                            #                                               #",
+              "#                                                                                            #                                               #",
+              "#   o                   **                   ***                                             #     *******                               o   #",
+              "#                                                                                                                                            #",
+              "##############################################################################################################################################"]
 
 const directions = {
     "n" : new Vector( 0, -1),
@@ -75,7 +102,7 @@ actionTypes.reproduce = function(critter, vector, action)  {
     const isIncorrectDest   =  dest === null,
           isIncorrectEnergy =  critter.energy <= 2 * baby.energy;
 
-    if(isIncorrectDest || isIncorrectEnergy || this.grid.get(dest) !== null) return false
+    if(isIncorrectDest  || this.grid.get(dest) !== null) return false
     this.deleteCreature(critter, vector, -2 * baby.energy)
     this.grid.set(dest, baby)
     return true
@@ -186,7 +213,7 @@ Creature.prototype.changeEnergy = function (val) {
 
 //Plant--------------------------------------------------------------
 function Plant(){
-    this.energy = 3 + Math.random() * 4;
+    this.energy = 3 + Math.random() * 1;
 }
 
 Plant.prototype = Object.create(Creature.prototype)
@@ -225,7 +252,7 @@ PlantEater.prototype.act = function(context){
 
 //PlantEater---------------------------------------------------------
 function SmartPlantEater(){
-    this.energy = 20;
+    this.energy = 100;
     this.range = 3;
 }
 
@@ -233,12 +260,20 @@ SmartPlantEater.prototype = Object.create(Creature.prototype)
 
 SmartPlantEater.prototype.act = function(context){
     const space = context.find(" ", 1);
-    if(this.energy > 60 && space) return reproduceAC({dist: space.dist, dir: space.dir})
+    if(this.energy > 120 && space) return reproduceAC({dist: space.dist, dir: space.dir})
     
     const plant= context.find(creatureViews.plant, this.range)
 
     if(plant && (plant.dist.x !== directions[plant.dir].x || plant.dist.y !== directions[plant.dir].y)){
-        return moveAC({dist: plant.dist, dir: plant.dir})
+        const iTrySoHardAndGetSOFar = context.lookArraund("*", plant.dir, directions[plant.dir])
+        const iTrySoHardAndGetSOFar2 = context.lookArraund(" ", plant.dir, directions[plant.dir])
+        if(iTrySoHardAndGetSOFar){
+            return eatAC({dist: plant.dist, dir: plant.dir})
+        }else if(iTrySoHardAndGetSOFar2){
+            return moveAC({dist: plant.dist, dir: plant.dir})
+        }else{
+            return moveAC({dist: space.dist, dir: space.dir})
+        }
     }
     if(plant) return eatAC({dir: plant.dir, dist: plant.dist})
 
@@ -395,15 +430,15 @@ const planConstructor = (x, y) => {
 
     for(let i = 0; i < y; i++){
         let str = ''
-        _plan.push()
+        _plan.push('')
         
         for(let j = 0; j < x; j++){
-            if(i === 0) _plan[i].push('#')
-            else if(i+1 === y) _plan[i].push('#')
+            if(i === 0) _plan[i] += '#'
+            else if(i+1 === y) _plan[i]+= '#'
             else if(j === 0 || j + 1 === x){
-                _plan[i].push('#')
+                _plan[i]+= '#'
             }else{
-                _plan[i].push(' ')
+                _plan[i]+= ' '
             }
 
             
@@ -414,7 +449,7 @@ const planConstructor = (x, y) => {
 }
 // const newPlan = planConstructor(20, 20)
 // console.log(newPlan)
-const world = new World(plan, {"#": Wall, "*": Plant, "o": SmartPlantEater});
+const world = new World(plan, {"#": Wall, "*": Plant, "o": SmartPlantEater, "w": SmartPlantEater});
 
 
 const direction = setInterval(() => {
