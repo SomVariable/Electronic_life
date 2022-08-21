@@ -112,6 +112,7 @@ actionTypes.reproduce = function(critter, vector, action)  {
 //end.Interfaces-----------------------------------------------------------
 
 
+
 // functions -------------------------------------------------------------------
 const randomDitections = (directions) => {
     const randomDirections = []
