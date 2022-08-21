@@ -1,3 +1,5 @@
+var colors = require('colors');
+
 const plan = ["##############################################################################################################################################",
               "# #o#                                 ######################################     ######################################                      #",
               "# # #                                 ######################################     ######################################               o      #",
@@ -9,7 +11,7 @@ const plan = ["#################################################################
               "# # # #                               ##        *   ##      ##  *         ##     ##        *   ##      ##  *         ##                      #",
               "# # # ################################################      ################     ################      ################                      #",
               "# # #            *                   #                                                                                                       #",
-              "# # ################################ #        w                            w                                                    *            #",
+              "# # ################################ #        w         O                  w                        O                           *            #",
               "# #               *                  #                                                                  w               o                    #",
               "# ####################################              ######################################                                          o        #",
               "#                                                   ###################################### o                           o                     #",
@@ -17,8 +19,8 @@ const plan = ["#################################################################
               "#                         o                         ##   ##                        ##   ##           *                o                      #",
               "#                                                  *##   ##          *             ##   ##                                                   #",
               "#                                                   ##   ##                        ##   ##                                        o          #",
-              "#                                                   ##   ###########      ###########   ##                                                   #",
-              "#                                    o              ##        *   ##      ##  *         ##   *                                               #",
+              "#                                                   ##   ###########      ###########   ##                 O                                 #",
+              "#          O                         o              ##        *   ##      ##  *         ##   *                                               #",
               "#                      *                            ################      ################                            **                     #",
               "#                                                                                                                                            #",
               "#                                                                                            #################################################",
@@ -79,7 +81,6 @@ actionTypes.move = function(critter, vector, action) {
     
     if(isIncorrectDest || isIncorrectEnergy || this.grid.get(dest) !== null) return false
 
-    this.deleteCreature(critter, vector, -1)
     this.grid.set(vector, null);
     this.grid.set(dest, critter)
     return true
@@ -99,11 +100,10 @@ actionTypes.eat = function(critter, vector, action) {
 actionTypes.reproduce = function(critter, vector, action)  {
     const baby = elementFromChar(this.legend, critter.originChar)
     const dest = this.checkDestination(action, vector);
-    const isIncorrectDest   =  dest === null,
-          isIncorrectEnergy =  critter.energy <= 2 * baby.energy;
+    const isIncorrectDest   =  dest === null;
 
-    if(isIncorrectDest  || this.grid.get(dest) !== null) return false
-    this.deleteCreature(critter, vector, -2 * baby.energy)
+    if(isIncorrectDest || this.grid.get(dest) !== null) return false
+    this.deleteCreature(critter, vector, critter.reproduceCost)
     this.grid.set(dest, baby)
     return true
 }
@@ -204,16 +204,35 @@ function Creature(){
     this.energy = null
 }
 
-
-
 Creature.prototype.changeEnergy = function (val) {
     this.energy += val;
-    
 }
 
+Creature.prototype.act = function(context){
+    const space = context.find(" ", 1);
+    if(this.energy > 120 && space) return reproduceAC({dist: space.dist, dir: space.dir})
+    
+    const plant= context.find(creatureViews.plant, this.range)
+
+    if(plant && (plant.dist.x !== directions[plant.dir].x || plant.dist.y !== directions[plant.dir].y)){
+        const isFood = context.lookArraund(this.target, plant.dir, directions[plant.dir])
+        const isSpace = context.lookArraund(" ", plant.dir, directions[plant.dir])
+        if(isFood){
+            return eatAC({dist: plant.dist, dir: plant.dir})
+        }else if(isSpace){
+            return moveAC({dist: plant.dist, dir: plant.dir})
+        }else{
+            return moveAC({dist: space.dist, dir: space.dir})
+        }
+    }
+    if(plant) return eatAC({dir: plant.dir, dist: plant.dist})
+
+    if(space) return moveAC({dist: space.dist, dir: space.dir})
+}
 //Plant--------------------------------------------------------------
 function Plant(){
     this.energy = 3 + Math.random() * 1;
+    this.reproduceCost = 0
 }
 
 Plant.prototype = Object.create(Creature.prototype)
@@ -234,52 +253,38 @@ Plant.prototype.act = function(context){
 function PlantEater(){
     this.energy = 20;
     this.range = 1
+    this.target = "o"
+    this.reproduceCost = 5
 }
 
 PlantEater.prototype = Object.create(Creature.prototype)
 
-PlantEater.prototype.act = function(context){
-    const space = context.find(" ", 1);
-    if(this.energy > 60 && space) return reproduceAC({dist: space.dist, dir: space.dir})
-    
-    const plant= context.find(creatureViews.plant, this.range)
-
-    if(plant) return eatAC({plant})
-
-    if(space) return moveAC({dist: space.dist, dir: space.dir})
-}
 //end. PlantEater------------------------------------------------------
 
 //PlantEater---------------------------------------------------------
 function SmartPlantEater(){
     this.energy = 100;
-    this.range = 3;
+    this.range = 20;
+    this.target = '*'
+    this.reproduceCost = 60
 }
 
 SmartPlantEater.prototype = Object.create(Creature.prototype)
 
-SmartPlantEater.prototype.act = function(context){
-    const space = context.find(" ", 1);
-    if(this.energy > 120 && space) return reproduceAC({dist: space.dist, dir: space.dir})
-    
-    const plant= context.find(creatureViews.plant, this.range)
-
-    if(plant && (plant.dist.x !== directions[plant.dir].x || plant.dist.y !== directions[plant.dir].y)){
-        const iTrySoHardAndGetSOFar = context.lookArraund("*", plant.dir, directions[plant.dir])
-        const iTrySoHardAndGetSOFar2 = context.lookArraund(" ", plant.dir, directions[plant.dir])
-        if(iTrySoHardAndGetSOFar){
-            return eatAC({dist: plant.dist, dir: plant.dir})
-        }else if(iTrySoHardAndGetSOFar2){
-            return moveAC({dist: plant.dist, dir: plant.dir})
-        }else{
-            return moveAC({dist: space.dist, dir: space.dir})
-        }
-    }
-    if(plant) return eatAC({dir: plant.dir, dist: plant.dist})
-
-    if(space) return moveAC({dist: space.dist, dir: space.dir})
-}
 //end. PlantEater------------------------------------------------------
+
+//Predator---------------------------------------------------------
+function Predator(){
+    this.energy = 100;
+    this.range = 25;
+    this.target = '*'
+    this.reproduceCost = 90
+}
+
+Predator.prototype = Object.create(Creature.prototype)
+
+
+//end. Predator------------------------------------------------------
 
 //WallFollower---------------------------------------------------------
 
@@ -304,12 +309,7 @@ SmartPlantEater.prototype.act = function(context){
 
 //end. WallFollower-----------------------------------------------------
 
-
-
-
 //end. Creatures Logic------------------------------------------------------------
-
-
 
 function World(map, legend){
     const grid = new Grid(map[0].length, map.length);
@@ -328,7 +328,17 @@ World.prototype.toString = function (){
     for(let y = 0; y < this.grid.height; y++){
         for(let x = 0; x < this.grid.width; x++){
             const element = this.grid.get(new Vector(x, y))
-            output += charFromElement(element)
+            let char = charFromElement(element)
+            if(element && element.originChar === '*'){
+                char = char.green.bold
+            }else if(element && element.originChar === '#'){
+                char = char.bgWhite.black.italic
+            }else if(element && element.originChar === 'o'){
+                char = char.bold
+            }else if(element && element.originChar === 'w'){
+                char = char.red
+            }
+            output += char
         }
         output += '\n'
     }
@@ -441,15 +451,21 @@ const planConstructor = (x, y) => {
                 _plan[i]+= ' '
             }
 
-            
         }
     }
 
     return _plan
 }
+
+const populatePlan = (plan, creatures) => {
+    
+}
+
 // const newPlan = planConstructor(20, 20)
 // console.log(newPlan)
-const world = new World(plan, {"#": Wall, "*": Plant, "o": SmartPlantEater, "w": SmartPlantEater});
+
+
+const world = new World(plan, {"#": Wall, "*": Plant, "O": SmartPlantEater, "o": PlantEater, "w": Predator});
 
 
 const direction = setInterval(() => {
